@@ -5,26 +5,16 @@ namespace Amp\File;
 use Amp\Loop;
 
 class StatCache {
-    private static $cache = [];
-    private static $timeouts = [];
-    private static $ttl = 3;
-    private static $now = null;
+    const DEFAULT_TTL = 3;
+
+    /**
+     * @var Cache\Driver|null
+     */
+    private static $instance;
 
     private static function init() {
-        self::$now = \time();
-
         $watcher = Loop::repeat(1000, function () {
-            self::$now = $now = \time();
-            foreach (self::$cache as $path => $expiry) {
-                if ($now > $expiry) {
-                    unset(
-                        self::$cache[$path],
-                        self::$timeouts[$path]
-                    );
-                } else {
-                    break;
-                }
-            }
+            self::getDriver()->cleanup();
         });
 
         Loop::unreference($watcher);
@@ -44,12 +34,20 @@ class StatCache {
         });
     }
 
+    private static function getDriver(): Cache\Driver {
+        if (!self::$instance) {
+            self::$instance = new Cache\ArrayDriver(self::DEFAULT_TTL);
+        }
+
+        return self::$instance;
+    }
+
     public static function get(string $path) {
-        return isset(self::$cache[$path]) ? self::$cache[$path] : null;
+        return self::getDriver()->get($path, Cache\Driver::TYPE_STAT);
     }
 
     public static function set(string $path, array $stat) {
-        if (self::$ttl <= 0) {
+        if (self::getDriver()->getTtl() <= 0) {
             return;
         }
 
@@ -57,23 +55,14 @@ class StatCache {
             self::init();
         }
 
-        self::$cache[$path] = $stat;
-        self::$timeouts[$path] = self::$now + self::$ttl;
+        self::getDriver()->set($path, $stat, Cache\Driver::TYPE_STAT);
     }
 
     public static function ttl(int $seconds) {
-        self::$ttl = $seconds;
+        self::getDriver()->setTtl($seconds);
     }
 
     public static function clear(string $path = null) {
-        if (isset($path)) {
-            unset(
-                self::$cache[$path],
-                self::$timeouts[$path]
-            );
-        } else {
-            self::$cache = [];
-            self::$timeouts = [];
-        }
+        self::getDriver()->clear($path);
     }
 }
