@@ -43,20 +43,32 @@ class ParallelHandle implements Handle {
     /** @var \Amp\Promise|null */
     private $closing;
 
+    /** @var Cache\Driver */
+    private $cache;
+
     /**
      * @param \Amp\Parallel\Worker\Worker $worker
      * @param int $id
      * @param string $path
      * @param int $size
      * @param string $mode
+     * @param Cache\Driver|null $cache [optional] `Defaults to StatCache::getDriver()`.
      */
-    public function __construct(Worker $worker, int $id, string $path, int $size, string $mode) {
+    public function __construct(
+        Worker $worker,
+        int $id,
+        string $path,
+        int $size,
+        string $mode,
+        Cache\Driver $cache = null
+    ) {
         $this->worker = $worker;
         $this->id = $id;
         $this->path = $path;
         $this->size = $size;
         $this->mode = $mode;
         $this->position = $this->mode[0] === 'a' ? $this->size : 0;
+        $this->cache = $cache ?? StatCache::getDriver();
     }
 
     public function __destruct() {
@@ -83,7 +95,7 @@ class ParallelHandle implements Handle {
         $this->writable = false;
 
         if ($this->worker->isRunning()) {
-            $this->closing = $this->worker->enqueue(new Internal\FileTask('fclose', [], $this->id));
+            $this->closing = $this->worker->enqueue(new Internal\FileTask('fclose', [], $this->id, $this->cache));
             $this->id = null;
         } else {
             $this->closing = new Success;
@@ -115,7 +127,7 @@ class ParallelHandle implements Handle {
         $this->busy = true;
 
         try {
-            $data = yield $this->worker->enqueue(new Internal\FileTask('fread', [$length], $this->id));
+            $data = yield $this->worker->enqueue(new Internal\FileTask('fread', [$length], $this->id, $this->cache));
             $this->position += \strlen($data);
             return $data;
         } catch (TaskException $exception) {
@@ -166,7 +178,7 @@ class ParallelHandle implements Handle {
         $this->busy = true;
 
         try {
-            $length = yield $this->worker->enqueue(new Internal\FileTask('fwrite', [$data], $this->id));
+            $length = yield $this->worker->enqueue(new Internal\FileTask('fwrite', [$data], $this->id, $this->cache));
         } catch (TaskException $exception) {
             throw new StreamException("Writing to the file failed", 0, $exception);
         } catch (WorkerException $exception) {
@@ -203,7 +215,7 @@ class ParallelHandle implements Handle {
             case \SEEK_END:
                 try {
                     $this->position = yield $this->worker->enqueue(
-                        new Internal\FileTask('fseek', [$offset, $whence], $this->id)
+                        new Internal\FileTask('fseek', [$offset, $whence], $this->id, $this->cache)
                     );
 
                     if ($this->position > $this->size) {

@@ -8,6 +8,20 @@ use Amp\Success;
 
 class BlockingDriver implements Driver {
     /**
+     * @var Cache\Driver
+     */
+    private $cache;
+
+    /**
+     * Constructs the file driver.
+     *
+     * @param Cache\Driver|null $cache [optional] `Defaults to StatCache::getDriver()`.
+     */
+    public function __construct(Cache\Driver $cache = null) {
+        $this->cache = $cache ?? StatCache::getDriver();
+    }
+
+    /**
      * {@inheritdoc}
      */
     public function open(string $path, string $mode): Promise {
@@ -43,10 +57,10 @@ class BlockingDriver implements Driver {
      * {@inheritdoc}
      */
     public function stat(string $path): Promise {
-        if ($stat = StatCache::get($path)) {
+        if ($stat = $this->cache->get($path, Cache\Driver::TYPE_STAT)) {
             return new Success($stat);
         } elseif ($stat = @\stat($path)) {
-            StatCache::set($path, $stat);
+            $this->cache->set($path, $stat, Cache\Driver::TYPE_STAT);
             \clearstatcache(true, $path);
         } else {
             $stat = null;
@@ -255,7 +269,7 @@ class BlockingDriver implements Driver {
      * {@inheritdoc}
      */
     public function unlink(string $path): Promise {
-        StatCache::clear($path);
+        $this->cache->clear($path);
         return new Success((bool) @\unlink($path));
     }
 
@@ -270,7 +284,7 @@ class BlockingDriver implements Driver {
      * {@inheritdoc}
      */
     public function rmdir(string $path): Promise {
-        StatCache::clear($path);
+        $this->cache->clear($path);
         return new Success((bool) @\rmdir($path));
     }
 

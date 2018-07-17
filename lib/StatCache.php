@@ -4,13 +4,16 @@ namespace Amp\File;
 
 use Amp\Loop;
 
+/**
+ * @deprecated
+ */
 class StatCache {
     const DEFAULT_TTL = 3;
 
     /**
      * @var Cache\Driver|null
      */
-    private static $instance;
+    private static $driver;
 
     private static function init() {
         $watcher = Loop::repeat(1000, function () {
@@ -34,12 +37,16 @@ class StatCache {
         });
     }
 
-    private static function getDriver(): Cache\Driver {
-        if (!self::$instance) {
-            self::$instance = new Cache\ArrayDriver(self::DEFAULT_TTL);
+    public static function getDriver(): Cache\Driver {
+        if (!self::$driver) {
+            self::$driver = new Cache\ArrayDriver(self::DEFAULT_TTL);
         }
 
-        return self::$instance;
+        return self::$driver;
+    }
+
+    public static function setDriver(Cache\Driver $driver) {
+        self::$driver = $driver;
     }
 
     public static function get(string $path) {

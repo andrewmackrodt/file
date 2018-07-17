@@ -7,10 +7,19 @@ use Amp\Promise;
 use Amp\Success;
 
 class EioDriver implements Driver {
+    /** @var Cache\Driver */
+    private $cache;
+
     /** @var \Amp\File\Internal\EioPoll */
     private $poll;
 
-    public function __construct() {
+    /**
+     * Constructs the file driver.
+     *
+     * @param Cache\Driver|null $cache [optional] `Defaults to StatCache::getDriver()`.
+     */
+    public function __construct(Cache\Driver $cache = null) {
+        $this->cache = $cache ?? StatCache::getDriver();
         $this->poll = new Internal\EioPoll;
     }
 
@@ -80,7 +89,7 @@ class EioDriver implements Driver {
         if ($result === -1) {
             $deferred->fail(new FilesystemException(\eio_get_last_error($req)));
         } else {
-            StatCache::set($path, $result);
+            $this->cache->set($path, $result, Cache\Driver::TYPE_STAT);
             $handle = new EioHandle($this->poll, $fh, $path, $mode, $result["size"]);
             $deferred->resolve($handle);
         }
@@ -90,7 +99,7 @@ class EioDriver implements Driver {
      * {@inheritdoc}
      */
     public function stat(string $path): Promise {
-        if ($stat = StatCache::get($path)) {
+        if ($stat = $this->cache->get($path, Cache\Driver::TYPE_STAT)) {
             return new Success($stat);
         }
 
@@ -109,7 +118,7 @@ class EioDriver implements Driver {
         if ($result === -1) {
             $deferred->resolve(null);
         } else {
-            StatCache::set($path, $result);
+            $this->cache->set($path, $result, Cache\Driver::TYPE_STAT);
             $deferred->resolve($result);
         }
     }
@@ -341,7 +350,7 @@ class EioDriver implements Driver {
         if ($result === -1) {
             $deferred->fail(new FilesystemException(\eio_get_last_error($req)));
         } else {
-            StatCache::clear($path);
+            $this->cache->clear($path);
             $deferred->resolve(true);
         }
     }
@@ -408,7 +417,7 @@ class EioDriver implements Driver {
         if ($result === -1) {
             $deferred->fail(new FilesystemException(\eio_get_last_error($req)));
         } else {
-            StatCache::clear($path);
+            $this->cache->clear($path);
             $deferred->resolve(true);
         }
     }
