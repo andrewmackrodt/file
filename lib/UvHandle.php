@@ -30,6 +30,9 @@ class UvHandle implements Handle {
     /** @var int */
     private $size;
 
+    /** @var Cache\Driver */
+    private $cache;
+
     /** @var int */
     private $position;
 
@@ -52,13 +55,23 @@ class UvHandle implements Handle {
      * @param string $path
      * @param string $mode
      * @param int $size
+     * @param Cache\Driver|null $cache [optional] `Defaults to StatCache::getDriver()`.
      */
-    public function __construct(Loop\UvDriver $driver, UvPoll $poll, $fh, string $path, string $mode, int $size) {
+    public function __construct(
+        Loop\UvDriver $driver,
+        UvPoll $poll,
+        $fh,
+        string $path,
+        string $mode,
+        int $size,
+        Cache\Driver $cache = null
+    ) {
         $this->poll = $poll;
         $this->fh = $fh;
         $this->path = $path;
         $this->mode = $mode;
         $this->size = $size;
+        $this->cache = $cache ?? StatCache::getDriver();
         $this->loop = $driver->getHandle();
         $this->position = ($mode[0] === "a") ? $size : 0;
 
@@ -165,7 +178,7 @@ class UvHandle implements Handle {
                     $deferred->fail(new StreamException("Writing to the file failed: " . $error));
                 }
             } else {
-                StatCache::clear($this->path);
+                $this->cache->clear($this->path);
                 $newPosition = $this->position + $length;
                 $delta = $newPosition - $this->position;
                 $this->position = ($this->mode[0] === "a") ? $this->position : $newPosition;

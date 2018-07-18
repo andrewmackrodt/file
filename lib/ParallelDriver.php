@@ -18,10 +18,17 @@ class ParallelDriver implements Driver {
     private $pool;
 
     /**
-     * @param \Amp\Parallel\Worker\Pool|null $pool
+     * @var Cache\Driver
      */
-    public function __construct(Pool $pool = null) {
-        $this->pool = $pool ?: Worker\pool();
+    private $cache;
+
+    /**
+     * @param Pool|null         $pool  [optional]
+     * @param Cache\Driver|null $cache [optional] `Defaults to StatCache::getDriver()`.
+     */
+    public function __construct(Pool $pool = null, Cache\Driver $cache = null) {
+        $this->pool  = $pool  ?? Worker\pool();
+        $this->cache = $cache ?? StatCache::getDriver();
     }
 
     /**
@@ -31,13 +38,13 @@ class ParallelDriver implements Driver {
         return call(function () use ($path, $mode) {
             $worker = $this->pool->get();
             try {
-                list($id, $size, $mode) = yield $worker->enqueue(new Internal\FileTask("fopen", [$path, $mode]));
+                list($id, $size, $mode) = yield $worker->enqueue(new Internal\FileTask("fopen", [$path, $mode], null, $this->cache));
             } catch (TaskException $exception) {
                 throw new FilesystemException("Could not open file", $exception);
             } catch (WorkerException $exception) {
                 throw new FilesystemException("Could not send open request to worker", $exception);
             }
-            return new ParallelHandle($worker, $id, $path, $size, $mode);
+            return new ParallelHandle($worker, $id, $path, $size, $mode, $this->cache);
         });
     }
 
@@ -56,8 +63,8 @@ class ParallelDriver implements Driver {
      */
     public function unlink(string $path): Promise {
         return call(function () use ($path) {
-            $result = yield from $this->runFileTask(new Internal\FileTask("unlink", [$path]));
-            StatCache::clear($path);
+            $result = yield from $this->runFileTask(new Internal\FileTask("unlink", [$path], null, $this->cache));
+            $this->cache->clear($path);
             return $result;
         });
     }
@@ -66,14 +73,14 @@ class ParallelDriver implements Driver {
      * {@inheritdoc}
      */
     public function stat(string $path): Promise {
-        if ($stat = StatCache::get($path)) {
+        if ($stat = $this->cache->get($path, Cache\Driver::TYPE_STAT)) {
             return new Success($stat);
         }
 
         return call(function () use ($path) {
-            $stat = yield from $this->runFileTask(new Internal\FileTask("stat", [$path]));
+            $stat = yield from $this->runFileTask(new Internal\FileTask("stat", [$path], null, $this->cache));
             if (!empty($stat)) {
-                StatCache::set($path, $stat);
+                $this->cache->set($path, $stat, Cache\Driver::TYPE_STAT);
             }
             return $stat;
         });
@@ -83,7 +90,7 @@ class ParallelDriver implements Driver {
      * {@inheritdoc}
      */
     public function rename(string $from, string $to): Promise {
-        return new Coroutine($this->runFileTask(new Internal\FileTask("rename", [$from, $to])));
+        return new Coroutine($this->runFileTask(new Internal\FileTask("rename", [$from, $to], null, $this->cache)));
     }
 
     /**
@@ -122,35 +129,35 @@ class ParallelDriver implements Driver {
      * {@inheritdoc}
      */
     public function link(string $target, string $link): Promise {
-        return new Coroutine($this->runFileTask(new Internal\FileTask("link", [$target, $link])));
+        return new Coroutine($this->runFileTask(new Internal\FileTask("link", [$target, $link], null, $this->cache)));
     }
 
     /**
      * {@inheritdoc}
      */
     public function symlink(string $target, string $link): Promise {
-        return new Coroutine($this->runFileTask(new Internal\FileTask("symlink", [$target, $link])));
+        return new Coroutine($this->runFileTask(new Internal\FileTask("symlink", [$target, $link], null, $this->cache)));
     }
 
     /**
      * {@inheritdoc}
      */
     public function readlink(string $path): Promise {
-        return new Coroutine($this->runFileTask(new Internal\FileTask("readlink", [$path])));
+        return new Coroutine($this->runFileTask(new Internal\FileTask("readlink", [$path], null, $this->cache)));
     }
 
     /**
      * {@inheritdoc}
      */
     public function mkdir(string $path, int $mode = 0777, bool $recursive = false): Promise {
-        return new Coroutine($this->runFileTask(new Internal\FileTask("mkdir", [$path, $mode, $recursive])));
+        return new Coroutine($this->runFileTask(new Internal\FileTask("mkdir", [$path, $mode, $recursive], null, $this->cache)));
     }
 
     /**
      * {@inheritdoc}
      */
     public function scandir(string $path): Promise {
-        return new Coroutine($this->runFileTask(new Internal\FileTask("scandir", [$path])));
+        return new Coroutine($this->runFileTask(new Internal\FileTask("scandir", [$path], null, $this->cache)));
     }
 
     /**
@@ -158,8 +165,8 @@ class ParallelDriver implements Driver {
      */
     public function rmdir(string $path): Promise {
         return call(function () use ($path) {
-            $result = yield from $this->runFileTask(new Internal\FileTask("rmdir", [$path]));
-            StatCache::clear($path);
+            $result = yield from $this->runFileTask(new Internal\FileTask("rmdir", [$path], null, $this->cache));
+            $this->cache->clear($path);
             return $result;
         });
     }
@@ -168,21 +175,21 @@ class ParallelDriver implements Driver {
      * {@inheritdoc}
      */
     public function chmod(string $path, int $mode): Promise {
-        return new Coroutine($this->runFileTask(new Internal\FileTask("chmod", [$path, $mode])));
+        return new Coroutine($this->runFileTask(new Internal\FileTask("chmod", [$path, $mode], null, $this->cache)));
     }
 
     /**
      * {@inheritdoc}
      */
     public function chown(string $path, int $uid, int $gid): Promise {
-        return new Coroutine($this->runFileTask(new Internal\FileTask("chown", [$path, $uid, $gid])));
+        return new Coroutine($this->runFileTask(new Internal\FileTask("chown", [$path, $uid, $gid], null, $this->cache)));
     }
 
     /**
      * {@inheritdoc}
      */
     public function exists(string $path): Promise {
-        return new Coroutine($this->runFileTask(new Internal\FileTask("exists", [$path])));
+        return new Coroutine($this->runFileTask(new Internal\FileTask("exists", [$path], null, $this->cache)));
     }
 
     /**
@@ -244,27 +251,37 @@ class ParallelDriver implements Driver {
      * {@inheritdoc}
      */
     public function lstat(string $path): Promise {
-        return new Coroutine($this->runFileTask(new Internal\FileTask("lstat", [$path])));
+        if ($stat = $this->cache->get($path, Cache\Driver::TYPE_LSTAT)) {
+            return new Success($stat);
+        }
+
+        return call(function () use ($path) {
+            $stat = yield from $this->runFileTask(new Internal\FileTask("lstat", [$path], null, $this->cache));
+            if (!empty($stat)) {
+                $this->cache->set($path, $stat, Cache\Driver::TYPE_LSTAT);
+            }
+            return $stat;
+        });
     }
 
     /**
      * {@inheritdoc}
      */
     public function touch(string $path, int $time = null, int $atime = null): Promise {
-        return new Coroutine($this->runFileTask(new Internal\FileTask("touch", [$path, $time, $atime])));
+        return new Coroutine($this->runFileTask(new Internal\FileTask("touch", [$path, $time, $atime], null, $this->cache)));
     }
 
     /**
      * {@inheritdoc}
      */
     public function get(string $path): Promise {
-        return new Coroutine($this->runFileTask(new Internal\FileTask("get", [$path])));
+        return new Coroutine($this->runFileTask(new Internal\FileTask("get", [$path], null, $this->cache)));
     }
 
     /**
      * {@inheritdoc}
      */
     public function put(string $path, string $contents): Promise {
-        return new Coroutine($this->runFileTask(new Internal\FileTask("put", [$path, $contents])));
+        return new Coroutine($this->runFileTask(new Internal\FileTask("put", [$path, $contents], null, $this->cache)));
     }
 }

@@ -4,6 +4,7 @@ namespace Amp\File\Internal;
 
 use Amp\File\BlockingDriver;
 use Amp\File\BlockingHandle;
+use Amp\File\Cache\Driver as Cache;
 use Amp\File\FilesystemException;
 use Amp\File\StatCache;
 use Amp\Parallel\Worker\Environment;
@@ -26,14 +27,18 @@ class FileTask implements Task {
     /**  @var string|null */
     private $id;
 
+    /**  @var Cache */
+    private $cache;
+
     /**
      * @param string $operation
      * @param array $args
      * @param int $id File ID.
+     * @param Cache|null $cache [optional] `Defaults to StatCache::getDriver()`.
      *
      * @throws \Error
      */
-    public function __construct(string $operation, array $args = [], int $id = null) {
+    public function __construct(string $operation, array $args = [], int $id = null, Cache $cache = null) {
         if (!\strlen($operation)) {
             throw new \Error('Operation must be a non-empty string');
         }
@@ -41,6 +46,7 @@ class FileTask implements Task {
         $this->operation = $operation;
         $this->args = $args;
         $this->id = $id;
+        $this->cache = $cache ?? StatCache::getDriver();
     }
 
     /**

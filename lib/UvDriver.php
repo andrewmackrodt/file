@@ -19,13 +19,18 @@ class UvDriver implements Driver {
     /** @var UvPoll */
     private $poll;
 
+    /** @var Cache\Driver */
+    private $cache;
+
     /**
      * @param \Amp\Loop\UvDriver $driver
+     * @param Cache\Driver|null  $cache  [optional] `Defaults to StatCache::getDriver()`.
      */
-    public function __construct(Loop\UvDriver $driver) {
+    public function __construct(Loop\UvDriver $driver, Cache\Driver $cache = null) {
         $this->driver = $driver;
         $this->loop = $driver->getHandle();
         $this->poll = new UvPoll;
+        $this->cache = $cache ?? StatCache::getDriver();
     }
 
     /**
@@ -90,7 +95,7 @@ class UvDriver implements Driver {
         } else {
             \uv_fs_fstat($this->loop, $fh, function ($fh, $stat) use ($openArr) {
                 if ($fh) {
-                    StatCache::set($openArr[1], $stat);
+                    $this->cache->set($openArr[1], $stat, Cache\Driver::TYPE_STAT);
                     $this->finalizeHandle($fh, $stat["size"], $openArr);
                 } else {
                     list(, $path, $deferred) = $openArr;
@@ -104,7 +109,7 @@ class UvDriver implements Driver {
 
     private function finalizeHandle($fh, $size, array $openArr) {
         list($mode, $path, $deferred) = $openArr;
-        $handle = new UvHandle($this->driver, $this->poll, $fh, $path, $mode, $size);
+        $handle = new UvHandle($this->driver, $this->poll, $fh, $path, $mode, $size, $this->cache);
         $deferred->resolve($handle);
     }
 
@@ -112,7 +117,7 @@ class UvDriver implements Driver {
      * {@inheritdoc}
      */
     public function stat(string $path): Promise {
-        if ($stat = StatCache::get($path)) {
+        if ($stat = $this->cache->get($path, Cache\Driver::TYPE_STAT)) {
             return new Success($stat);
         }
 
@@ -131,7 +136,7 @@ class UvDriver implements Driver {
                     unset($stat['link']);
                 }
 
-                StatCache::set($path, $stat);
+                $this->cache->set($path, $stat, Cache\Driver::TYPE_STAT);
             }
 
             $deferred->resolve($stat);
@@ -271,12 +276,18 @@ class UvDriver implements Driver {
      * {@inheritdoc}
      */
     public function lstat(string $path): Promise {
+        if ($stat = $this->cache->get($path, Cache\Driver::TYPE_LSTAT)) {
+            return new Success($stat);
+        }
+
         $deferred = new Deferred;
         $this->poll->listen($deferred->promise());
 
-        \uv_fs_lstat($this->loop, $path, function ($fh, $stat) use ($deferred) {
+        \uv_fs_lstat($this->loop, $path, function ($fh, $stat) use ($deferred, $path) {
             if (empty($fh)) {
                 $stat = null;
+            } else {
+                $this->cache->set($path, $stat, Cache\Driver::TYPE_LSTAT);
             }
 
             $deferred->resolve($stat);
@@ -339,7 +350,7 @@ class UvDriver implements Driver {
         $this->poll->listen($deferred->promise());
 
         \uv_fs_rename($this->loop, $from, $to, function ($fh) use ($deferred, $from) {
-            StatCache::clear($from);
+            $this->cache->clear($from);
             $deferred->resolve((bool) $fh);
         });
 
@@ -354,7 +365,7 @@ class UvDriver implements Driver {
         $this->poll->listen($deferred->promise());
 
         \uv_fs_unlink($this->loop, $path, function ($fh) use ($deferred, $path) {
-            StatCache::clear($path);
+            $this->cache->clear($path);
             $deferred->resolve((bool) $fh);
         });
 
@@ -413,7 +424,7 @@ class UvDriver implements Driver {
         $this->poll->listen($deferred->promise());
 
         \uv_fs_rmdir($this->loop, $path, function ($fh) use ($deferred, $path) {
-            StatCache::clear($path);
+            $this->cache->clear($path);
             $deferred->resolve((bool) $fh);
         });
 
