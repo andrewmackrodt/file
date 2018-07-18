@@ -251,7 +251,17 @@ class ParallelDriver implements Driver {
      * {@inheritdoc}
      */
     public function lstat(string $path): Promise {
-        return new Coroutine($this->runFileTask(new Internal\FileTask("lstat", [$path], null, $this->cache)));
+        if ($stat = $this->cache->get($path, Cache\Driver::TYPE_LSTAT)) {
+            return new Success($stat);
+        }
+
+        return call(function () use ($path) {
+            $stat = yield from $this->runFileTask(new Internal\FileTask("lstat", [$path], null, $this->cache));
+            if (!empty($stat)) {
+                $this->cache->set($path, $stat, Cache\Driver::TYPE_LSTAT);
+            }
+            return $stat;
+        });
     }
 
     /**

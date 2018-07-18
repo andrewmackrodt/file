@@ -212,7 +212,10 @@ class BlockingDriver implements Driver {
      * {@inheritdoc}
      */
     public function lstat(string $path): Promise {
-        if ($stat = @\lstat($path)) {
+        if ($stat = $this->cache->get($path, Cache\Driver::TYPE_LSTAT)) {
+            return new Success($stat);
+        } elseif ($stat = @\lstat($path)) {
+            $this->cache->set($path, $stat, Cache\Driver::TYPE_LSTAT);
             \clearstatcache(true, $path);
         } else {
             $stat = null;

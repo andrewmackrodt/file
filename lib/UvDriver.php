@@ -268,12 +268,18 @@ class UvDriver implements Driver {
      * {@inheritdoc}
      */
     public function lstat(string $path): Promise {
+        if ($stat = $this->cache->get($path, Cache\Driver::TYPE_LSTAT)) {
+            return new Success($stat);
+        }
+
         $deferred = new Deferred;
         $this->poll->listen($deferred->promise());
 
-        \uv_fs_lstat($this->loop, $path, function ($fh, $stat) use ($deferred) {
+        \uv_fs_lstat($this->loop, $path, function ($fh, $stat) use ($deferred, $path) {
             if (empty($fh)) {
                 $stat = null;
+            } else {
+                $this->cache->set($path, $stat, Cache\Driver::TYPE_LSTAT);
             }
 
             $deferred->resolve($stat);

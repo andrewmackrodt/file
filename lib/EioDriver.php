@@ -254,19 +254,31 @@ class EioDriver implements Driver {
      * {@inheritdoc}
      */
     public function lstat(string $path): Promise {
+        if ($stat = $this->cache->get($path, Cache\Driver::TYPE_LSTAT)) {
+            return new Success($stat);
+        }
+
         $deferred = new Deferred;
         $this->poll->listen($deferred->promise());
 
         $priority = \EIO_PRI_DEFAULT;
-        \eio_lstat($path, $priority, [$this, "onLstat"], $deferred);
+        \eio_lstat($path, $priority, [$this, "onLstat"], [$deferred, $path]);
 
         return $deferred->promise();
     }
 
-    private function onLstat($deferred, $result, $req) {
+    private function onLstat($args, $result, $req) {
+        /**
+         * @var Deferred $deferred
+         * @var string $path
+         */
+        list($deferred, $path) = $args;
+
         if ($result === -1) {
             $deferred->resolve(null);
         } else {
+            $this->cache->set($path, $result, Cache\Driver::TYPE_LSTAT);
+
             $deferred->resolve($result);
         }
     }
