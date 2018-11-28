@@ -6,7 +6,8 @@ use Amp\Failure;
 use Amp\Promise;
 use Amp\Success;
 
-class BlockingDriver implements Driver {
+class BlockingDriver implements Driver
+{
     /**
      * @var Cache\Driver
      */
@@ -17,14 +18,16 @@ class BlockingDriver implements Driver {
      *
      * @param Cache\Driver|null $cache [optional] `Defaults to StatCache::getDriver()`.
      */
-    public function __construct(Cache\Driver $cache = null) {
+    public function __construct(Cache\Driver $cache = null)
+    {
         $this->cache = $cache ?? StatCache::getDriver();
     }
 
     /**
      * {@inheritdoc}
      */
-    public function open(string $path, string $mode): Promise {
+    public function open(string $path, string $mode): Promise
+    {
         $mode = \str_replace(['b', 't', 'e'], '', $mode);
 
         switch ($mode) {
@@ -56,7 +59,8 @@ class BlockingDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function stat(string $path): Promise {
+    public function stat(string $path): Promise
+    {
         if ($stat = $this->cache->get($path, Cache\Driver::TYPE_STAT)) {
             return new Success($stat);
         } elseif ($stat = @\stat($path)) {
@@ -72,7 +76,8 @@ class BlockingDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function exists(string $path): Promise {
+    public function exists(string $path): Promise
+    {
         if ($exists = @\file_exists($path)) {
             \clearstatcache(true, $path);
         }
@@ -89,7 +94,8 @@ class BlockingDriver implements Driver {
      * @param string $path An absolute file system path
      * @return \Amp\Promise<int>
      */
-    public function size(string $path): Promise {
+    public function size(string $path): Promise
+    {
         if (!@\file_exists($path)) {
             return new Failure(new FilesystemException(
                 "Path does not exist"
@@ -121,7 +127,8 @@ class BlockingDriver implements Driver {
      * @param string $path An absolute file system path
      * @return \Amp\Promise<bool>
      */
-    public function isdir(string $path): Promise {
+    public function isdir(string $path): Promise
+    {
         if (!@\file_exists($path)) {
             return new Success(false);
         }
@@ -141,7 +148,8 @@ class BlockingDriver implements Driver {
      * @param string $path An absolute file system path
      * @return \Amp\Promise<bool>
      */
-    public function isfile(string $path): Promise {
+    public function isfile(string $path): Promise
+    {
         if (!@\file_exists($path)) {
             return new Success(false);
         }
@@ -158,7 +166,8 @@ class BlockingDriver implements Driver {
      * @param string $path An absolute file system path
      * @return \Amp\Promise<int>
      */
-    public function mtime(string $path): Promise {
+    public function mtime(string $path): Promise
+    {
         if (!@\file_exists($path)) {
             return new Failure(new FilesystemException(
                 "Path does not exist"
@@ -177,7 +186,8 @@ class BlockingDriver implements Driver {
      * @param string $path An absolute file system path
      * @return \Amp\Promise<int>
      */
-    public function atime(string $path): Promise {
+    public function atime(string $path): Promise
+    {
         if (!@\file_exists($path)) {
             return new Failure(new FilesystemException(
                 "Path does not exist"
@@ -195,7 +205,8 @@ class BlockingDriver implements Driver {
      * @param string $path An absolute file system path
      * @return \Amp\Promise<int>
      */
-    public function ctime(string $path): Promise {
+    public function ctime(string $path): Promise
+    {
         if (!@\file_exists($path)) {
             return new Failure(new FilesystemException(
                 "Path does not exist"
@@ -211,7 +222,8 @@ class BlockingDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function lstat(string $path): Promise {
+    public function lstat(string $path): Promise
+    {
         if ($stat = $this->cache->get($path, Cache\Driver::TYPE_LSTAT)) {
             return new Success($stat);
         } elseif ($stat = @\lstat($path)) {
@@ -227,7 +239,8 @@ class BlockingDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function symlink(string $target, string $link): Promise {
+    public function symlink(string $target, string $link): Promise
+    {
         if (!@\symlink($target, $link)) {
             return new Failure(new FilesystemException("Could not create symbolic link"));
         }
@@ -238,7 +251,8 @@ class BlockingDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function link(string $target, string $link): Promise {
+    public function link(string $target, string $link): Promise
+    {
         if (!@\link($target, $link)) {
             return new Failure(new FilesystemException("Could not create hard link"));
         }
@@ -249,7 +263,8 @@ class BlockingDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function readlink(string $path): Promise {
+    public function readlink(string $path): Promise
+    {
         if (!($result = @\readlink($path))) {
             return new Failure(new FilesystemException("Could not read symbolic link"));
         }
@@ -260,7 +275,8 @@ class BlockingDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function rename(string $from, string $to): Promise {
+    public function rename(string $from, string $to): Promise
+    {
         if (!@\rename($from, $to)) {
             return new Failure(new FilesystemException("Could not rename file"));
         }
@@ -271,7 +287,8 @@ class BlockingDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function unlink(string $path): Promise {
+    public function unlink(string $path): Promise
+    {
         $this->cache->clear($path);
         return new Success((bool) @\unlink($path));
     }
@@ -279,14 +296,16 @@ class BlockingDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function mkdir(string $path, int $mode = 0777, bool $recursive = false): Promise {
+    public function mkdir(string $path, int $mode = 0777, bool $recursive = false): Promise
+    {
         return new Success((bool) @\mkdir($path, $mode, $recursive));
     }
 
     /**
      * {@inheritdoc}
      */
-    public function rmdir(string $path): Promise {
+    public function rmdir(string $path): Promise
+    {
         $this->cache->clear($path);
         return new Success((bool) @\rmdir($path));
     }
@@ -294,7 +313,8 @@ class BlockingDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function scandir(string $path): Promise {
+    public function scandir(string $path): Promise
+    {
         if (!@\is_dir($path)) {
             return new Failure(new FilesystemException(
                 "Not a directory"
@@ -315,14 +335,16 @@ class BlockingDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function chmod(string $path, int $mode): Promise {
+    public function chmod(string $path, int $mode): Promise
+    {
         return new Success((bool) @\chmod($path, $mode));
     }
 
     /**
      * {@inheritdoc}
      */
-    public function chown(string $path, int $uid, int $gid): Promise {
+    public function chown(string $path, int $uid, int $gid): Promise
+    {
         if ($uid !== -1 && !@\chown($path, $uid)) {
             return new Failure(new FilesystemException(
                 \error_get_last()["message"]
@@ -341,7 +363,8 @@ class BlockingDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function touch(string $path, int $time = null, int $atime = null): Promise {
+    public function touch(string $path, int $time = null, int $atime = null): Promise
+    {
         $time = $time ?? \time();
         $atime = $atime ?? $time;
         return new Success((bool) \touch($path, $time, $atime));
@@ -350,7 +373,8 @@ class BlockingDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function get(string $path): Promise {
+    public function get(string $path): Promise
+    {
         $result = @\file_get_contents($path);
         return ($result === false)
             ? new Failure(new FilesystemException(\error_get_last()["message"]))
@@ -360,7 +384,8 @@ class BlockingDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function put(string $path, string $contents): Promise {
+    public function put(string $path, string $contents): Promise
+    {
         $result = @\file_put_contents($path, $contents);
         return ($result === false)
             ? new Failure(new FilesystemException(\error_get_last()["message"]))

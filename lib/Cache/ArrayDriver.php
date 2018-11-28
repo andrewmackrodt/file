@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Amp\File\Cache;
 
-class ArrayDriver implements Driver {
+class ArrayDriver implements Driver
+{
     /**
      * @var array
      */
@@ -18,15 +19,17 @@ class ArrayDriver implements Driver {
     /**
      * @param int|null $ttl
      */
-    public function __construct(int $ttl = null) {
+    public function __construct(int $ttl = null)
+    {
         if ($ttl === null) {
-            $ttl = (int) ini_get('realpath_cache_ttl');
+            $ttl = (int) \ini_get('realpath_cache_ttl');
         }
 
         $this->ttl = $ttl;
     }
 
-    public function get(string $path, string $type) {
+    public function get(string $path, string $type)
+    {
         if (empty($this->cache[$path][$type])) {
             return null;
         }
@@ -49,7 +52,8 @@ class ArrayDriver implements Driver {
         return $item['data'];
     }
 
-    public function set(string $path, array $data, string $type) {
+    public function set(string $path, array $data, string $type)
+    {
         if ($this->ttl === 0) {
             return;
         }
@@ -60,15 +64,18 @@ class ArrayDriver implements Driver {
         ];
     }
 
-    public function getTtl(): int {
+    public function getTtl(): int
+    {
         return $this->ttl;
     }
 
-    public function setTtl(int $ttl) {
+    public function setTtl(int $ttl)
+    {
         $this->ttl = $ttl;
     }
 
-    public function clear(string $path = null, string $type = null) {
+    public function clear(string $path = null, string $type = null)
+    {
         if ($path !== null) {
             if (!isset($this->cache[$path])) {
                 return;
@@ -76,7 +83,7 @@ class ArrayDriver implements Driver {
 
             $scope = [$path];
         } else {
-            $scope = array_keys($this->cache);
+            $scope = \array_keys($this->cache);
         }
 
         if ($type === null) {
@@ -90,7 +97,8 @@ class ArrayDriver implements Driver {
         }
     }
 
-    public function cleanup() {
+    public function cleanup()
+    {
         $now = \time();
 
         foreach ($this->cache as $path => $item) {

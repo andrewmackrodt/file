@@ -12,7 +12,8 @@ use Amp\Promise;
 use Amp\Success;
 use function Amp\call;
 
-class ParallelHandle implements Handle {
+class ParallelHandle implements Handle
+{
     /** @var \Amp\Parallel\Worker\Worker */
     private $worker;
 
@@ -71,7 +72,8 @@ class ParallelHandle implements Handle {
         $this->cache = $cache ?? StatCache::getDriver();
     }
 
-    public function __destruct() {
+    public function __destruct()
+    {
         if ($this->id !== null) {
             $this->close();
         }
@@ -80,14 +82,16 @@ class ParallelHandle implements Handle {
     /**
      * {@inheritdoc}
      */
-    public function path(): string {
+    public function path(): string
+    {
         return $this->path;
     }
 
     /**
      * {@inheritdoc}
      */
-    public function close(): Promise {
+    public function close(): Promise
+    {
         if ($this->closing) {
             return $this->closing;
         }
@@ -107,11 +111,13 @@ class ParallelHandle implements Handle {
     /**
      * {@inheritdoc}
      */
-    public function eof(): bool {
+    public function eof(): bool
+    {
         return $this->pendingWrites === 0 && $this->size <= $this->position;
     }
 
-    public function read(int $length = self::DEFAULT_READ_LENGTH): Promise {
+    public function read(int $length = self::DEFAULT_READ_LENGTH): Promise
+    {
         if ($this->id === null) {
             throw new ClosedException("The file has been closed");
         }
@@ -123,7 +129,8 @@ class ParallelHandle implements Handle {
         return new Coroutine($this->doRead($length));
     }
 
-    private function doRead(int $length): \Generator {
+    private function doRead(int $length): \Generator
+    {
         $this->busy = true;
 
         try {
@@ -142,7 +149,8 @@ class ParallelHandle implements Handle {
     /**
      * {@inheritdoc}
      */
-    public function write(string $data): Promise {
+    public function write(string $data): Promise
+    {
         if ($this->id === null) {
             throw new ClosedException("The file has been closed");
         }
@@ -161,7 +169,8 @@ class ParallelHandle implements Handle {
     /**
      * {@inheritdoc}
      */
-    public function end(string $data = ""): Promise {
+    public function end(string $data = ""): Promise
+    {
         return call(function () use ($data) {
             $promise = $this->write($data);
             $this->writable = false;
@@ -173,7 +182,8 @@ class ParallelHandle implements Handle {
         });
     }
 
-    private function doWrite(string $data): \Generator {
+    private function doWrite(string $data): \Generator
+    {
         ++$this->pendingWrites;
         $this->busy = true;
 
@@ -196,7 +206,8 @@ class ParallelHandle implements Handle {
     /**
      * {@inheritdoc}
      */
-    public function seek(int $offset, int $whence = SEEK_SET): Promise {
+    public function seek(int $offset, int $whence = SEEK_SET): Promise
+    {
         if ($this->id === null) {
             throw new ClosedException("The file has been closed");
         }
@@ -208,7 +219,8 @@ class ParallelHandle implements Handle {
         return new Coroutine($this->doSeek($offset, $whence));
     }
 
-    private function doSeek(int $offset, int $whence) {
+    private function doSeek(int $offset, int $whence)
+    {
         switch ($whence) {
             case \SEEK_SET:
             case \SEEK_CUR:
@@ -237,21 +249,24 @@ class ParallelHandle implements Handle {
     /**
      * {@inheritdoc}
      */
-    public function tell(): int {
+    public function tell(): int
+    {
         return $this->position;
     }
 
     /**
      * {@inheritdoc}
      */
-    public function size(): int {
+    public function size(): int
+    {
         return $this->size;
     }
 
     /**
      * {@inheritdoc}
      */
-    public function mode(): string {
+    public function mode(): string
+    {
         return $this->mode;
     }
 }

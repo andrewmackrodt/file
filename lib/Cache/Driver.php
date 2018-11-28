@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Amp\File\Cache;
 
-interface Driver {
+interface Driver
+{
     const TYPE_REALPATH = 'realpath';
     const TYPE_STAT = 'stat';
     const TYPE_LSTAT = 'lstat';

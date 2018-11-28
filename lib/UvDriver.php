@@ -9,7 +9,8 @@ use Amp\Loop;
 use Amp\Promise;
 use Amp\Success;
 
-class UvDriver implements Driver {
+class UvDriver implements Driver
+{
     /** @var \Amp\Loop\Driver */
     private $driver;
 
@@ -26,7 +27,8 @@ class UvDriver implements Driver {
      * @param \Amp\Loop\UvDriver $driver
      * @param Cache\Driver|null  $cache  [optional] `Defaults to StatCache::getDriver()`.
      */
-    public function __construct(Loop\UvDriver $driver, Cache\Driver $cache = null) {
+    public function __construct(Loop\UvDriver $driver, Cache\Driver $cache = null)
+    {
         $this->driver = $driver;
         $this->loop = $driver->getHandle();
         $this->poll = new UvPoll;
@@ -36,7 +38,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function open(string $path, string $mode): Promise {
+    public function open(string $path, string $mode): Promise
+    {
         $flags = $this->parseMode($mode);
         $chmod = ($flags & \UV::O_CREAT) ? 0644 : 0;
 
@@ -58,7 +61,8 @@ class UvDriver implements Driver {
         return $deferred->promise();
     }
 
-    private function parseMode(string $mode): int {
+    private function parseMode(string $mode): int
+    {
         $mode = \str_replace(['b', 't', 'e'], '', $mode);
 
         switch ($mode) {
@@ -78,7 +82,8 @@ class UvDriver implements Driver {
         }
     }
 
-    private function onOpenHandle($fh, array $openArr) {
+    private function onOpenHandle($fh, array $openArr)
+    {
         list($mode) = $openArr;
 
         if ($mode[0] === "w") {
@@ -107,7 +112,8 @@ class UvDriver implements Driver {
         }
     }
 
-    private function finalizeHandle($fh, $size, array $openArr) {
+    private function finalizeHandle($fh, $size, array $openArr)
+    {
         list($mode, $path, $deferred) = $openArr;
         $handle = new UvHandle($this->driver, $this->poll, $fh, $path, $mode, $size, $this->cache);
         $deferred->resolve($handle);
@@ -116,7 +122,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function stat(string $path): Promise {
+    public function stat(string $path): Promise
+    {
         if ($stat = $this->cache->get($path, Cache\Driver::TYPE_STAT)) {
             return new Success($stat);
         }
@@ -148,7 +155,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function exists(string $path): Promise {
+    public function exists(string $path): Promise
+    {
         $deferred = new Deferred;
 
         $this->stat($path)->onResolve(function ($error, $result) use ($deferred) {
@@ -161,7 +169,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function isdir(string $path): Promise {
+    public function isdir(string $path): Promise
+    {
         $deferred = new Deferred;
 
         $this->stat($path)->onResolve(function ($error, $result) use ($deferred) {
@@ -178,7 +187,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function isfile(string $path): Promise {
+    public function isfile(string $path): Promise
+    {
         $deferred = new Deferred;
 
         $this->stat($path)->onResolve(function ($error, $result) use ($deferred) {
@@ -195,7 +205,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function size(string $path): Promise {
+    public function size(string $path): Promise
+    {
         $deferred = new Deferred;
 
         $this->stat($path)->onResolve(function ($error, $result) use ($deferred) {
@@ -218,7 +229,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function mtime(string $path): Promise {
+    public function mtime(string $path): Promise
+    {
         $deferred = new Deferred;
 
         $this->stat($path)->onResolve(function ($error, $result) use ($deferred) {
@@ -237,7 +249,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function atime(string $path): Promise {
+    public function atime(string $path): Promise
+    {
         $deferred = new Deferred;
 
         $this->stat($path)->onResolve(function ($error, $result) use ($deferred) {
@@ -256,7 +269,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function ctime(string $path): Promise {
+    public function ctime(string $path): Promise
+    {
         $deferred = new Deferred;
 
         $this->stat($path)->onResolve(function ($error, $result) use ($deferred) {
@@ -275,7 +289,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function lstat(string $path): Promise {
+    public function lstat(string $path): Promise
+    {
         if ($stat = $this->cache->get($path, Cache\Driver::TYPE_LSTAT)) {
             return new Success($stat);
         }
@@ -299,7 +314,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function symlink(string $target, string $link): Promise {
+    public function symlink(string $target, string $link): Promise
+    {
         $deferred = new Deferred;
         $this->poll->listen($deferred->promise());
 
@@ -313,7 +329,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function link(string $target, string $link): Promise {
+    public function link(string $target, string $link): Promise
+    {
         $deferred = new Deferred;
         $this->poll->listen($deferred->promise());
 
@@ -327,7 +344,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function readlink(string $path): Promise {
+    public function readlink(string $path): Promise
+    {
         $deferred = new Deferred;
         $this->poll->listen($deferred->promise());
 
@@ -345,7 +363,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function rename(string $from, string $to): Promise {
+    public function rename(string $from, string $to): Promise
+    {
         $deferred = new Deferred;
         $this->poll->listen($deferred->promise());
 
@@ -360,7 +379,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function unlink(string $path): Promise {
+    public function unlink(string $path): Promise
+    {
         $deferred = new Deferred;
         $this->poll->listen($deferred->promise());
 
@@ -375,19 +395,20 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function mkdir(string $path, int $mode = 0777, bool $recursive = false): Promise {
+    public function mkdir(string $path, int $mode = 0777, bool $recursive = false): Promise
+    {
         $deferred = new Deferred;
         $this->poll->listen($deferred->promise());
 
         if ($recursive) {
-            $path = str_replace("/", DIRECTORY_SEPARATOR, $path);
-            $arrayPath = explode(DIRECTORY_SEPARATOR, $path);
+            $path = \str_replace("/", DIRECTORY_SEPARATOR, $path);
+            $arrayPath = \explode(DIRECTORY_SEPARATOR, $path);
             $tmpPath = "";
 
             $callback = function () use (
                 &$callback, &$arrayPath, &$tmpPath, $mode, $deferred
             ) {
-                $tmpPath .= DIRECTORY_SEPARATOR . array_shift($arrayPath);
+                $tmpPath .= DIRECTORY_SEPARATOR . \array_shift($arrayPath);
 
                 if (empty($arrayPath)) {
                     \uv_fs_mkdir($this->loop, $tmpPath, $mode, function ($fh) use ($deferred) {
@@ -419,7 +440,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function rmdir(string $path): Promise {
+    public function rmdir(string $path): Promise
+    {
         $deferred = new Deferred;
         $this->poll->listen($deferred->promise());
 
@@ -434,7 +456,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function scandir(string $path): Promise {
+    public function scandir(string $path): Promise
+    {
         $deferred = new Deferred;
         $this->poll->listen($deferred->promise());
 
@@ -452,7 +475,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function chmod(string $path, int $mode): Promise {
+    public function chmod(string $path, int $mode): Promise
+    {
         $deferred = new Deferred;
         $this->poll->listen($deferred->promise());
 
@@ -466,7 +490,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function chown(string $path, int $uid, int $gid): Promise {
+    public function chown(string $path, int $uid, int $gid): Promise
+    {
         // @TODO Return a failure in windows environments
         $deferred = new Deferred;
         $this->poll->listen($deferred->promise());
@@ -481,7 +506,8 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function touch(string $path, int $time = null, int $atime = null): Promise {
+    public function touch(string $path, int $time = null, int $atime = null): Promise
+    {
         $time = $time ?? \time();
         $atime = $atime ?? $time;
 
@@ -499,14 +525,16 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function get(string $path): Promise {
+    public function get(string $path): Promise
+    {
         $promise = new Coroutine($this->doGet($path));
         $this->poll->listen($promise);
 
         return $promise;
     }
 
-    private function doGet($path): \Generator {
+    private function doGet($path): \Generator
+    {
         $promise = $this->doFsOpen($path, $flags = \UV::O_RDONLY, $mode = 0);
         if (!$fh = yield $promise) {
             throw new FilesystemException("Failed opening file handle: {$path}");
@@ -539,7 +567,8 @@ class UvDriver implements Driver {
         return yield $deferred->promise();
     }
 
-    private function doFsOpen($path, $flags, $mode) {
+    private function doFsOpen($path, $flags, $mode)
+    {
         $deferred = new Deferred;
 
         \uv_fs_open($this->loop, $path, $flags, $mode, function ($fh) use ($deferred, $path) {
@@ -549,7 +578,8 @@ class UvDriver implements Driver {
         return $deferred->promise();
     }
 
-    private function doFsStat($fh) {
+    private function doFsStat($fh)
+    {
         $deferred = new Deferred;
 
         \uv_fs_fstat($this->loop, $fh, function ($fh, $stat) use ($deferred) {
@@ -565,7 +595,8 @@ class UvDriver implements Driver {
         return $deferred->promise();
     }
 
-    private function doFsRead($fh, $offset, $len) {
+    private function doFsRead($fh, $offset, $len)
+    {
         $deferred = new Deferred;
 
         \uv_fs_read($this->loop, $fh, $offset, $len, function ($fh, $nread, $buffer) use ($deferred) {
@@ -578,14 +609,16 @@ class UvDriver implements Driver {
     /**
      * {@inheritdoc}
      */
-    public function put(string $path, string $contents): Promise {
+    public function put(string $path, string $contents): Promise
+    {
         $promise = new Coroutine($this->doPut($path, $contents));
         $this->poll->listen($promise);
 
         return $promise;
     }
 
-    private function doPut($path, $contents): \Generator {
+    private function doPut($path, $contents): \Generator
+    {
         $flags = \UV::O_WRONLY | \UV::O_CREAT;
         $mode = \UV::S_IRWXU | \UV::S_IRUSR;
 
@@ -596,7 +629,7 @@ class UvDriver implements Driver {
         }
 
         $deferred = new Deferred;
-        $len = strlen($contents);
+        $len = \strlen($contents);
 
         \uv_fs_write($this->loop, $fh, $contents, $offset = 0, function ($fh, $result) use ($deferred, $len) {
             \uv_fs_close($this->loop, $fh, function () use ($deferred, $result, $len) {

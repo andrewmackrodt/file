@@ -11,7 +11,8 @@ use Amp\Promise;
 use Amp\Success;
 use function Amp\call;
 
-class UvHandle implements Handle {
+class UvHandle implements Handle
+{
     /** @var UvPoll */
     private $poll;
 
@@ -78,7 +79,8 @@ class UvHandle implements Handle {
         $this->queue = new \SplQueue;
     }
 
-    public function read(int $length = self::DEFAULT_READ_LENGTH): Promise {
+    public function read(int $length = self::DEFAULT_READ_LENGTH): Promise
+    {
         if ($this->isActive) {
             throw new PendingOperationError;
         }
@@ -99,7 +101,7 @@ class UvHandle implements Handle {
                     $deferred->fail(new StreamException("Reading from the file failed: " . $error));
                 }
             } else {
-                $length = strlen($buffer);
+                $length = \strlen($buffer);
                 $this->position = $this->position + $length;
                 $deferred->resolve($length ? $buffer : null);
             }
@@ -113,7 +115,8 @@ class UvHandle implements Handle {
     /**
      * {@inheritdoc}
      */
-    public function write(string $data): Promise {
+    public function write(string $data): Promise
+    {
         if ($this->isActive && $this->queue->isEmpty()) {
             throw new PendingOperationError;
         }
@@ -142,7 +145,8 @@ class UvHandle implements Handle {
     /**
      * {@inheritdoc}
      */
-    public function end(string $data = ""): Promise {
+    public function end(string $data = ""): Promise
+    {
         return call(function () use ($data) {
             $promise = $this->write($data);
             $this->writable = false;
@@ -154,7 +158,8 @@ class UvHandle implements Handle {
         });
     }
 
-    private function push(string $data): Promise {
+    private function push(string $data): Promise
+    {
         $length = \strlen($data);
 
         $deferred = new Deferred;
@@ -195,7 +200,8 @@ class UvHandle implements Handle {
     /**
      * {@inheritdoc}
      */
-    public function seek(int $offset, int $whence = \SEEK_SET): Promise {
+    public function seek(int $offset, int $whence = \SEEK_SET): Promise
+    {
         if ($this->isActive) {
             throw new PendingOperationError;
         }
@@ -223,35 +229,40 @@ class UvHandle implements Handle {
     /**
      * {@inheritdoc}
      */
-    public function tell(): int {
+    public function tell(): int
+    {
         return $this->position;
     }
 
     /**
      * {@inheritdoc}
      */
-    public function eof(): bool {
+    public function eof(): bool
+    {
         return !$this->queue->isEmpty() ? false : ($this->size <= $this->position);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function path(): string {
+    public function path(): string
+    {
         return $this->path;
     }
 
     /**
      * {@inheritdoc}
      */
-    public function mode(): string {
+    public function mode(): string
+    {
         return $this->mode;
     }
 
     /**
      * {@inheritdoc}
      */
-    public function close(): Promise {
+    public function close(): Promise
+    {
         if ($this->closing) {
             return $this->closing;
         }
