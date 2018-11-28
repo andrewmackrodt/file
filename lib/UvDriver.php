@@ -20,6 +20,16 @@ class UvDriver implements Driver
     /** @var UvPoll */
     private $poll;
 
+    /**
+     * @param \Amp\Loop\Driver The currently active loop driver.
+     *
+     * @return bool Determines if this driver can be used based on the environment.
+     */
+    public static function isSupported(Loop\Driver $driver): bool
+    {
+        return $driver instanceof Loop\UvDriver;
+    }
+
     /** @var Cache\Driver */
     private $cache;
 
@@ -352,6 +362,8 @@ class UvDriver implements Driver
         \uv_fs_readlink($this->loop, $path, function ($fh, $target) use ($deferred) {
             if (!(bool) $fh) {
                 $deferred->fail(new FilesystemException("Could not read symbolic link"));
+
+                return;
             }
 
             $deferred->resolve($target);
@@ -461,9 +473,11 @@ class UvDriver implements Driver
         $deferred = new Deferred;
         $this->poll->listen($deferred->promise());
 
-        uv_fs_readdir($this->loop, $path, 0, function ($fh, $data) use ($deferred, $path) {
-            if (empty($fh)) {
+        \uv_fs_readdir($this->loop, $path, 0, function ($fh, $data) use ($deferred, $path) {
+            if (empty($fh) && $data !== 0) {
                 $deferred->fail(new FilesystemException("Failed reading contents from {$path}"));
+            } elseif ($data === 0) {
+                $deferred->resolve([]);
             } else {
                 $deferred->resolve($data);
             }

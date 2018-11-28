@@ -15,6 +15,14 @@ class EioDriver implements Driver
     private $poll;
 
     /**
+     * @return bool Determines if this driver can be used based on the environment.
+     */
+    public static function isSupported(): bool
+    {
+        return \extension_loaded('eio');
+    }
+
+    /**
      * Constructs the file driver.
      *
      * @param Cache\Driver|null $cache [optional] `Defaults to StatCache::getDriver()`.
@@ -492,7 +500,9 @@ class EioDriver implements Driver
         if ($result === -1) {
             $deferred->fail(new FilesystemException(\eio_get_last_error($req)));
         } else {
-            $deferred->resolve($result["names"]);
+            $result = $result["names"];
+            \sort($result);
+            $deferred->resolve($result);
         }
     }
 
